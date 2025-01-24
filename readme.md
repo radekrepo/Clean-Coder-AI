@@ -71,3 +71,32 @@ Report bugs or propose new features for Clean Coder on our [Discord](https://dis
 <br>
 
 Sweat, tears and endless glory... [Join the Clean Coder contributors](https://clean-coder.dev/community/contributions_guide/)!
+
+
+TODO for this branch:
+There are a few notable repositories and tools for automated unit test generation in Python besides Pynguin (https://github.com/se2p/pynguin):
+
+Auger: Auger is an automated unit test generation tool for Python[3]. It can generate unit tests by observing the runtime behavior of your code. Key features include:
+
+Supports both Python 2 and 3
+Can generate tests for classes and modules
+Automatically mocks external dependencies
+Generates readable and maintainable test code
+CodiumAI: While not an open-source repository, CodiumAI is a platform that offers automated unit test generation for Python[5]. It integrates with popular IDEs like VS Code and provides:
+
+Quick test generation for Python classes and functions
+Code analysis to understand the purpose of the code
+Ability to customize and exclude specific tests
+Hypothesis: Although not strictly a test generator, Hypothesis is a powerful property-based testing library for Python that can automatically generate test cases based on specified properties and constraints.
+
+MutPy: While not generating unit tests directly, MutPy is a mutation testing tool for Python that can help identify weaknesses in existing test suites, indirectly assisting in improving test coverage.
+
+pytest-randomly: This pytest plugin doesn't generate tests but helps in making existing tests more robust by randomizing their execution order, potentially uncovering hidden dependencies between tests.
+
+While these tools offer various approaches to automated testing in Python, Pynguin stands out as a comprehensive framework specifically designed for automated unit test generation[1][2][4]. It offers features like:
+
+Support for different test generation techniques
+Extensibility for researchers to implement new approaches
+Integration with popular Python testing frameworks
+Ability to generate high-coverage regression tests
+Each of these tools has its strengths and may be suitable for different use cases or development workflows. Developers should evaluate them based on their specific needs and project requirements.
