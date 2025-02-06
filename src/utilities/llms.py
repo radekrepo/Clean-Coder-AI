@@ -1,7 +1,7 @@
 """Utilities for loading LLMs."""
 import os
+from collections.abc import Callable
 from os import getenv
-from threading import local
 
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
@@ -9,7 +9,6 @@ from langchain_ollama import ChatOllama
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_openai.chat_models import ChatOpenAI as ChatLocalModel
 from langchain_openai.chat_models import ChatOpenAI as ChatOpenRouter
-from typing import Callable
 
 #from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -28,7 +27,7 @@ def llm_open_router(model):
     timeout=60,
 )
 
-def llm_open_local_hosted(model: str):
+def llm_open_local_hosted(model: str) -> Callable:
     """Return a locally hosted model."""
     return ChatLocalModel(
     openai_api_key="n/a",
