@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class PythonLibraries(BaseModel):
-    """Identify python libraries which are relevant to the user's task."""
+    """Identify python libraries which are relevant to the user's task. No fewer than three."""
 
     libraries: list[str] = Field("The list of libraries.")
 
