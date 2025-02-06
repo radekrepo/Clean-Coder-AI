@@ -10,7 +10,9 @@ from crawl4ai import AsyncWebCrawler
 from crawl4ai.models import CrawlResult
 from dotenv import find_dotenv, load_dotenv
 
+from src.tools.tools_doc_harvester import PythonLibraries
 from src.utilities.exceptions import ModuleImportedButNotLocatedError
+from src.utilities.llms import init_llms_mini
 
 load_dotenv(find_dotenv())
 
@@ -49,10 +51,12 @@ class DocHarvester:
     def __init__(self) -> None:
         """Initial information to help harvest documentation."""
         self.work_dir = os.getenv("WORK_DIR")
+        llms_mini = init_llms_mini(run_name="DocHarvester")
+        self.llm_mini = llms_mini[0]
     def identify_libraries(self, task: str) -> list[str]:
         """Library names relevant for user's task. An LLM task."""
-        libraries = []
-        return libraries
+        structured_llm = self.llm_mini.with_structured_output(PythonLibraries)
+        return structured_llm.invoke(task).libraries
 
     def locate_module_files(self, lib: str) -> Path:
         """Identify locations where module scripts are stored."""
