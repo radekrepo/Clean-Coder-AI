@@ -1,3 +1,4 @@
+"""Functions to create an index of files for RAG."""
 import logging
 import os
 import sys
@@ -8,7 +9,8 @@ from dotenv import find_dotenv, load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+from src.utilities.exceptions import MissingEnvironmentVariableError
 from src.utilities.util_functions import join_paths
 from src.utilities.llms import init_llms_mini
 
@@ -20,7 +22,8 @@ work_dir = os.getenv("WORK_DIR")
 ## Configure the logging level
 logging.basicConfig(level=logging.INFO)
 
-def is_code_file(file_path):
+def is_code_file(file_path: Path) -> bool:
+    """Checker for whether file extension indicates a script."""
     # List of common code file extensions
     code_extensions = {
         ".js", ".jsx", ".ts", ".tsx", ".vue", ".py", ".rb", ".php", ".java", ".c", ".cpp", ".cs", ".go", ".swift",
@@ -37,11 +40,14 @@ def get_content(file_path) -> str:
     return file_path.name + "\n" + content
 
 
-def write_descriptions(subfolders_with_files=["/"], verbose:int=0):
+def write_descriptions(subfolders_with_files: list[str | Path]) -> None:
+    """Produce short descriptions of files. Store them in .clean_coder folder in WORK_DIR."""
+    if not work_dir:
+        msg = "WORK_DIR variable not provided. Please add WORK_DIR to .env file"
+        raise MissingEnvironmentVariableError(msg)
     all_files = []
-
     for folder in subfolders_with_files:
-        for root, _, files in os.walk(work_dir + folder):
+        for root, _, files in os.walk(work_dir + str(folder)):
             for file in files:
                 file_path = Path(root) / file
                 if is_code_file(file_path):
