@@ -32,36 +32,41 @@ def get_content(file_path: Path) -> str:
     return file_path.name + "\n" + content
 
 
-def files_in_directory(subfolders_with_files: list[str | Path],
-                       work_dir: str,
+def evaluate_file(root: str, file: str, file_extension_constraint: set[str] | None) -> Path | None:
+    """Return file path if the file is to be considered."""
+    file_path = Path(root).joinpath(file)
+    if file_extension_constraint and relevant_extension(file_path, file_extension_constraint=file_extension_constraint):
+            return file_path
+    if not file_extension_constraint:
+        return file_path
+    return None
+
+
+def files_in_directory(
+                       directories_with_files_to_describe: list[str | Path],
                        file_extension_constraint: set[str] | None,
                        ) -> list[Path]:
-    """
-    Fetch relative paths of files in directory.
-    TODO: resolve limited depth for traversing folders (only 2 levels at the time of writing)
-    """
+    """Fetch paths of files in directory."""
     files_to_describe = []
-    for folder in subfolders_with_files:
-        for root, _, files in os.walk(work_dir + str(folder)):
-            for file in files:
-                file_path = Path(root) / file
-                if file_extension_constraint:
-                    if relevant_extension(file_path, file_extension_constraint=file_extension_constraint):
-                        files_to_describe.append(file_path)
-                else:
-                    files_to_describe.append(file_path)
+    for directory in directories_with_files_to_describe:
+        directory_files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        tmp = [evaluate_file(root=str(directory), file=file, file_extension_constraint=file_extension_constraint) for file in directory_files]
+        files_to_describe.extend(tmp)
+        for root, _, files in os.walk(directory):
+            tmp = [evaluate_file(root=root, file=file, file_extension_constraint=file_extension_constraint) for file in files]
+            files_to_describe.extend(tmp)
     return files_to_describe
 
 
-def save_file_description(file_path: Path, work_dir: str, description: str, description_folder: str) -> None:
+def save_file_description(file_path: Path, work_dir: str, description: str, file_description_dir: str) -> None:
     """Save file description."""
     file_name = file_path.relative_to(work_dir).as_posix().replace("/", "=")
-    output_path = join_paths(description_folder, f"{file_name}.txt")
+    output_path = join_paths(file_description_dir, f"{file_name}.txt")
     with open(output_path, "w", encoding="utf-8") as out_file:
         out_file.write(description)
 
 
-def output_descriptions(files_to_describe: list[Path], chain, description_folder: str, work_dir: str) -> None:
+def output_descriptions(files_to_describe: list[Path], chain, file_description_dir: str, work_dir: str) -> None:
     """Generate & output file descriptions to designated directory in WORK_DIR."""
     # iterate over all files, take 8 files at once
     batch_size = 8
@@ -72,18 +77,18 @@ def output_descriptions(files_to_describe: list[Path], chain, description_folder
         [save_file_description(file_path=file_path,
                                work_dir=work_dir,
                                description=description,
-                               description_folder=description_folder,
+                               file_description_dir=file_description_dir,
                                ) for file_path,
                                description in zip(files_iteration, descriptions, strict=True)]
 
 
-def produce_descriptions(subfolders_with_files: list[str | Path],
+def produce_descriptions(directories_with_files_to_describe: list[str | Path],
                        file_description_dir: str,
                        work_dir: str,
                        file_extension_constraint: set[str] | None,
                        ) -> None:
     """Produce short descriptions of files. Store them in .clean_coder folder in WORK_DIR."""
-    files_to_describe = files_in_directory(subfolders_with_files=subfolders_with_files, work_dir=work_dir, file_extension_constraint=file_extension_constraint)
+    files_to_describe = files_in_directory(directories_with_files_to_describe=directories_with_files_to_describe, file_extension_constraint=file_extension_constraint)
 
     prompt = ChatPromptTemplate.from_template(
     """Describe the following code in 4 sentences or less, focusing only on important information from integration point of view.
@@ -94,15 +99,13 @@ def produce_descriptions(subfolders_with_files: list[str | Path],
     llms = init_llms_mini(tools=[], run_name="File Describer")
     llm = llms[0]
     chain = prompt | llm | StrOutputParser()
-    description_folder = join_paths(work_dir, file_description_dir)
-    Path(description_folder).mkdir(parents=True, exist_ok=True)
-    output_descriptions(files_to_describe=files_to_describe, work_dir=work_dir, chain=chain, description_folder=description_folder)
+    Path(file_description_dir).mkdir(parents=True, exist_ok=True)
+    output_descriptions(files_to_describe=files_to_describe, work_dir=work_dir, chain=chain, file_description_dir=file_description_dir)
 
 
-def read_file_descriptions_and_upload_to_base(collection: chromadb.PersistentClient, work_dir: str, file_description_dir: str) -> None:
+def upload_to_collection(collection: chromadb.PersistentClient, file_description_dir: str) -> None:
     """Insert file information to chroma database."""
-    description_folder = join_paths(work_dir, file_description_dir)
-    for root, _, files in os.walk(description_folder):
+    for root, _, files in os.walk(file_description_dir):
         for file in files:
             file_path = Path(root) / file
             with open(file_path, encoding="utf-8") as f:
@@ -114,6 +117,7 @@ def read_file_descriptions_and_upload_to_base(collection: chromadb.PersistentCli
                 ids=[file_path.name.replace("=", "/").removesuffix(".txt")],
             )
 
+
 def upload_descriptions_to_vdb(chroma_collection_name: str, work_dir: str, file_description_dir: str, vdb_location: str = ".clean_coder/chroma_base") -> None:
     """Upload file descriptions to chroma database."""
     chroma_client = chromadb.PersistentClient(path=join_paths(work_dir, vdb_location))
@@ -122,7 +126,7 @@ def upload_descriptions_to_vdb(chroma_collection_name: str, work_dir: str, file_
     )
 
     # read files and upload to base
-    read_file_descriptions_and_upload_to_base(collection=collection, work_dir=work_dir, file_description_dir=file_description_dir)
+    upload_to_collection(collection=collection, file_description_dir=file_description_dir)
 
 
 if __name__ == "__main__":
@@ -133,12 +137,12 @@ if __name__ == "__main__":
     if not work_dir:
         msg = "WORK_DIR variable not provided. Please add WORK_DIR to .env file"
         raise MissingEnvironmentVariableError(msg)
-    file_description_dir = ".clean_coder/workdir_file_and_folder_descriptions"
-    file_extension_constraint =     code_extensions = {
+    file_description_dir = join_paths(work_dir, ".clean_coder/workdir_file_descriptions")
+    file_extension_constraint = {
         ".js", ".jsx", ".ts", ".tsx", ".vue", ".py", ".rb", ".php", ".java", ".c", ".cpp", ".cs", ".go", ".swift",
         ".kt", ".rs", ".htm",".html", ".css", ".scss", ".sass", ".less", ".prompt",
     }
-    produce_descriptions(subfolders_with_files=["/"],
+    produce_descriptions(directories_with_files_to_describe=[work_dir],
                        file_description_dir=file_description_dir,
                        work_dir=work_dir,
                        file_extension_constraint=file_extension_constraint,
