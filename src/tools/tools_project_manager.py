@@ -2,7 +2,7 @@ from langchain.tools import tool
 from typing_extensions import Annotated
 from todoist_api_python.api import TodoistAPI
 import os
-from src.utilities.print_formatters import print_formatted
+from src.utilities.print_formatters import print_formatted, print_text_snippet
 from src.utilities.manager_utils import actualize_progress_description_file, move_task
 from src.utilities.user_input import user_input
 from src.utilities.graphics import task_completed_animation
@@ -22,7 +22,6 @@ work_dir = os.getenv('WORK_DIR')
 load_dotenv(join_paths(work_dir, ".clean_coder/.env"))
 todoist_api_key = os.getenv('TODOIST_API_KEY')
 todoist_api = TodoistAPI(todoist_api_key)
-TOOL_NOT_EXECUTED_WORD = "Tool not been executed. "
 
 
 @tool
@@ -37,7 +36,7 @@ Avoid creating new tasks that have overlapping scope with old ones - modify or d
 """
     human_message = user_input("Type (o)k to agree or provide commentary.")
     if human_message not in ['o', 'ok']:
-        return TOOL_NOT_EXECUTED_WORD + f"Action wasn't executed because of human interruption. He said: {human_message}"
+        return f"Action wasn't executed because of human interruption. He said: {human_message}"
 
     try:
         todoist_api.add_task(
@@ -61,10 +60,10 @@ def modify_task(
     try:
         task_name = todoist_api.get_task(task_id).content
     except HTTPError:
-        raise Exception(f"Are you sure Todoist project (ID: {os.getenv('TODOIST_PROJECT_ID')}) exists?")
+        raise Exception(f"Are you sure Todoist project (ID: {os.getenv('TODOIST_PROJECT_ID')}) and task (ID: {task_id}) exist?")
     human_message = user_input(f"I want to {'delete' if delete else 'modify'} task '{task_name}'. Type (o)k or provide commentary. ")
     if human_message not in ['o', 'ok']:
-        return TOOL_NOT_EXECUTED_WORD + f"Action wasn't executed because of human interruption. He said: {human_message}"
+        return f"Action wasn't executed because of human interruption. He said: {human_message}"
 
     update_data = {}
     if new_task_name:
@@ -109,30 +108,19 @@ overlapping scope allowed.
         "Project planning finished. Provide your proposition of changes in task list or type (o)k to continue...\n"
     )
     if human_message not in ['o', 'ok']:
-        return TOOL_NOT_EXECUTED_WORD + human_message
-
-    # first_epic_id = todoist_api.get_sections(project_id=os.getenv('TODOIST_PROJECT_ID'))[0].id
-    # tasks_first_epic = todoist_api.get_tasks(project_id=os.getenv('TODOIST_PROJECT_ID'), section_id=first_epic_id)
-    # if not tasks_first_epic:
-    #     return TOOL_NOT_EXECUTED_WORD + "Closest epic is empty. Close it if its scope been completely executed or add tasks into it if not."
-    # # Get first task and it's name and description
+        return f"Human: {human_message}"
+    # Get first task and it's name and description
     task = todoist_api.get_tasks(project_id=os.getenv('TODOIST_PROJECT_ID'))[0]
-    task_name_description = f"{task.content}\n{task.description}"
+    task_name_description = f"{task.content}\n\n{task.description}"
 
     # Execute the main pipeline to implement the task
-    print_formatted(f"\nAsked programmer to execute task: {task_name_description}\n", color="light_blue")
+    print_formatted(f"Asked programmer to execute task:", color="light_blue")
+    print_text_snippet(task.description, title=task.content)
     run_clean_coder_pipeline(task_name_description, work_dir)
 
     # ToDo: git upload
 
-    # Ask tester to check if changes have been implemented correctly
-    tester_query = f"""Please check if the task has been implemented correctly.
-
-    Task: {task.content}
-    """
-    tester_response = user_input(tester_query)
-
-    actualize_progress_description_file(task_name_description, tester_response)
+    actualize_progress_description_file(task_name_description)
 
     # Mark task as done
     todoist_api.close_task(task_id=task.id)

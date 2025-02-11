@@ -85,7 +85,7 @@ def init_llms_high_intelligence(tools: None | list[Callable] =None, run_name: st
     """Returns available high power LLM models, with tools when available and config."""
     llms = []
     if os.getenv("OPENAI_API_KEY"):
-        llms.append(ChatOpenAI(model="o3-mini", temperature=1, timeout=60))
+        llms.append(ChatOpenAI(model="o3-mini", temperature=1, timeout=60, reasoning_effort="high"))
     if os.getenv("OPENAI_API_KEY"):
         llms.append(ChatOpenAI(model="o1", temperature=1, timeout=60))
     if os.getenv("OPENROUTER_API_KEY"):

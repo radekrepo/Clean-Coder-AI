@@ -3,8 +3,8 @@ from typing_extensions import Annotated
 import os
 from dotenv import load_dotenv, find_dotenv
 from src.utilities.syntax_checker_functions import check_syntax
-from src.utilities.start_work_functions import file_folder_ignored, CoderIgnore
-from src.utilities.util_functions import join_paths, TOOL_NOT_EXECUTED_WORD
+from src.utilities.start_work_functions import file_folder_ignored
+from src.utilities.util_functions import join_paths, WRONG_TOOL_CALL_WORD
 from src.utilities.user_input import user_input
 from src.tools.rag.retrieval import retrieve
 
@@ -34,7 +34,7 @@ def prepare_list_dir_tool(work_dir):
 List files in directory. Use only for dirs content of which is hidden in the project tree.
 """
         try:
-            if file_folder_ignored(directory, CoderIgnore.get_forbidden()):
+            if file_folder_ignored(directory):
                 return f"You are not allowed to work with directory {directory}."
             files = os.listdir(join_paths(work_dir, directory))
 
@@ -52,7 +52,7 @@ def prepare_see_file_tool(work_dir):
 Check contents of file.
 """
         try:
-            if file_folder_ignored(filename, CoderIgnore.get_forbidden()):
+            if file_folder_ignored(filename):
                 return f"You are not allowed to work with {filename}."
             with open(join_paths(work_dir, filename), 'r', encoding='utf-8') as file:
                 lines = file.readlines()
@@ -97,11 +97,11 @@ Proper indentation is important.
                 check_syntax_response = check_syntax(file_contents, filename)
                 if check_syntax_response != "Valid syntax":
                     print("Wrong syntax provided, asking to correct.")
-                    return TOOL_NOT_EXECUTED_WORD + syntax_error_insert_code.format(error_response=check_syntax_response)
+                    return WRONG_TOOL_CALL_WORD + syntax_error_insert_code.format(error_response=check_syntax_response)
                 message = "Never accept changes you don't understand. Type (o)k if you accept or provide commentary. "
                 human_message = user_input(message)
                 if human_message not in ['o', 'ok']:
-                    return TOOL_NOT_EXECUTED_WORD + f"Human: {human_message}"
+                    return f"Human: {human_message}"
                 file.seek(0)
                 file.truncate()
                 file.write(file_contents)
@@ -131,11 +131,11 @@ Exchange entire functions or code blocks at once. Avoid changing functions parti
                 check_syntax_response = check_syntax(file_contents, filename)
                 if check_syntax_response != "Valid syntax":
                     print(check_syntax_response)
-                    return TOOL_NOT_EXECUTED_WORD + syntax_error_modify_code.format(error_response=check_syntax_response)
+                    return WRONG_TOOL_CALL_WORD + syntax_error_modify_code.format(error_response=check_syntax_response)
                 message = "Never accept changes you don't understand. Type (o)k if you accept or provide commentary. "
                 human_message = user_input(message)
                 if human_message not in ['o', 'ok']:
-                    return TOOL_NOT_EXECUTED_WORD + f"Human: {human_message}"
+                    return f"Human: {human_message}"
                 file.seek(0)
                 file.truncate()
                 file.write(file_contents)
@@ -161,7 +161,7 @@ with another tools.
             message = "Never accept changes you don't understand. Type (o)k if you accept or provide commentary. "
             human_message = user_input(message)
             if human_message not in ['o', 'ok']:
-                return TOOL_NOT_EXECUTED_WORD + f"Human: {human_message}"
+                return f"Human: {human_message}"
 
             full_path = join_paths(work_dir, filename)
             directory = os.path.dirname(full_path)
