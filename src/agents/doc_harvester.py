@@ -9,14 +9,12 @@ from pathlib import Path
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.models import CrawlResult
 from dotenv import find_dotenv, load_dotenv
-from langchain_community.document_loaders import TextLoader
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from src.tools.rag.write_descriptions import produce_descriptions, upload_descriptions_to_vdb
 from src.tools.tools_doc_harvester import PythonLibraries
-from src.utilities.exceptions import ModuleImportedButNotLocatedError
+from src.utilities.exceptions import MissingEnvironmentVariableError, ModuleImportedButNotLocatedError
 from src.utilities.llms import init_llms_mini
+from src.utilities.util_functions import join_paths
 
 load_dotenv(find_dotenv())
 
@@ -54,7 +52,11 @@ class DocHarvester:
 
     def __init__(self) -> None:
         """Initial information to help harvest documentation."""
-        self.work_dir = os.getenv("WORK_DIR")
+        work_dir = os.getenv("WORK_DIR")
+        if not work_dir:
+            msg = "WORK_DIR variable not provided. Please add WORK_DIR to .env file"
+            raise MissingEnvironmentVariableError(msg)
+        self.work_dir = work_dir
         llms_mini = init_llms_mini(run_name="DocHarvester")
         self.llm_mini = llms_mini[0]
 
@@ -90,16 +92,47 @@ class DocHarvester:
 
     def indexed_data(self, rag_input: dict[str, str]) -> None:
         """Prepare RAG-ready data from scripts in directories indicated in the input."""
-        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-        vector_store = FAISS(embedding_function=embeddings) # USE CHROMA, src.agents.tools.rag
-        TextLoader
-        docs = loader.load()
+        file_description_dir = join_paths(self.work_dir, ".clean_coder/lib_documentation_descriptions")
+        file_extension_constraint = {
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".vue",
+            ".py",
+            ".rb",
+            ".php",
+            ".java",
+            ".c",
+            ".cpp",
+            ".cs",
+            ".go",
+            ".swift",
+            ".kt",
+            ".rs",
+            ".htm",
+            ".html",
+            ".css",
+            ".scss",
+            ".sass",
+            ".less",
+            ".prompt",
+        }
+        ignore = {".clean_coder", ".coderrules"}
+        produce_descriptions(
+            directories_with_files_to_describe=list(rag_input.values()),
+            file_description_dir=file_description_dir,
+            work_dir=self.work_dir,
+            file_extension_constraint=file_extension_constraint,
+            ignore=ignore,
+            )
+        chroma_collection_name = f"clean_coder_{Path(self.work_dir).name}_lib_documentation_descriptions"
+        upload_descriptions_to_vdb(
+            chroma_collection_name=chroma_collection_name,
+            work_dir=self.work_dir,
+            file_description_dir=file_description_dir,
+        )
 
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        all_splits = text_splitter.split_documents(docs)
-
-        # Index chunks
-        _ = vector_store.add_documents(documents=all_splits)
 
     def rag_documentation(self, task: str) -> None | list[str]:
         """Returns documentation relevant for the task set by human user, a list of files."""
