@@ -84,7 +84,7 @@ def output_descriptions(files_to_describe: list[Path], chain: RunnableSequence, 
     # iterate over all files, take 8 files at once
     batch_size = 8
     for i in range(0, len(files_to_describe), batch_size):
-        files_iteration = files_to_describe[i:i + batch_size]
+        files_iteration = [f for f in files_to_describe[i:i + batch_size] if f is not None]
         descriptions = chain.batch([get_content(file_path) for file_path in files_iteration])
         logging.debug(descriptions)
         [save_file_description(file_path=file_path,
