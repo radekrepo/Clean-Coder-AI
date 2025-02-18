@@ -13,10 +13,9 @@ from langchain_core.runnables.base import RunnableSequence
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 from src.utilities.exceptions import MissingEnvironmentVariableError
+from src.utilities.llms import init_llms_mini
 from src.utilities.start_work_functions import file_folder_ignored
 from src.utilities.util_functions import join_paths
-from src.utilities.llms import init_llms_mini
-
 
 ## Configure the logging level
 logging.basicConfig(level=logging.INFO)
