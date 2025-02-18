@@ -40,6 +40,7 @@ def add_to_indexing_if_relevant(root: str, file: str, file_extension_constraint:
     """Return file path if the file is to be considered."""
     file_path = Path(root).joinpath(file)
     if file_folder_ignored(str(file_path)):
+        # ignore files and folders mentioned in .coderignore
         return None
     if not file_extension_constraint:
         return file_path
