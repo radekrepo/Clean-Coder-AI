@@ -35,7 +35,7 @@ def get_content(file_path: Path) -> str:
     return file_path.name + "\n" + content
 
 
-def evaluate_file(root: str, file: str, file_extension_constraint: set[str] | None, ignore: set[str]) -> Path | None:
+def add_to_indexing_if_relevant(root: str, file: str, file_extension_constraint: set[str] | None, ignore: set[str]) -> Path | None:
     """Return file path if the file is to be considered."""
     file_path = Path(root).joinpath(file)
     if len(ignore.intersection(file_path.parts)) > 0:
@@ -57,7 +57,7 @@ def files_in_directory(
     for directory in directories_with_files_to_describe:
         directory_files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
         tmp = [
-            evaluate_file(
+            add_to_indexing_if_relevant(
                 root=str(directory),
                 file=file,
                 file_extension_constraint=file_extension_constraint,
@@ -68,7 +68,7 @@ def files_in_directory(
         files_to_describe.extend(tmp)
         for root, _, files in os.walk(directory):
             tmp = [
-                evaluate_file(
+                add_to_indexing_if_relevant(
                     root=root,
                     file=file,
                     file_extension_constraint=file_extension_constraint,
