@@ -80,8 +80,11 @@ def files_in_directory(
     return files_to_describe
 
 
-def save_file_description(file_path: Path, work_dir: str, description: str, file_description_dir: str) -> None:
+def save_file_description(file_path: Path, description: str, file_description_dir: str) -> None:
     """Save file description."""
+    if not work_dir:
+        msg = "WORK_DIR variable not provided. Please add WORK_DIR to .env file"
+        raise MissingEnvironmentVariableError(msg)
     file_name = file_path.relative_to(work_dir).as_posix().replace("/", "=")
     output_path = join_paths(file_description_dir, f"{file_name}.txt")
     with open(output_path, "w", encoding="utf-8") as out_file:
@@ -89,7 +92,7 @@ def save_file_description(file_path: Path, work_dir: str, description: str, file
 
 
 def output_descriptions(
-    files_to_describe: list[Path], chain: RunnableSequence, file_description_dir: str, work_dir: str
+    files_to_describe: list[Path], chain: RunnableSequence, file_description_dir: str,
 ) -> None:
     """Generate & output file descriptions to designated directory in WORK_DIR."""
     # iterate over all files, take 8 files at once
@@ -101,7 +104,6 @@ def output_descriptions(
         [
             save_file_description(
                 file_path=file_path,
-                work_dir=work_dir,
                 description=description,
                 file_description_dir=file_description_dir,
             )
@@ -112,7 +114,6 @@ def output_descriptions(
 def produce_descriptions(
     directories_with_files_to_describe: list[str | Path],
     file_description_dir: str,
-    work_dir: str,
     ignore: set[str],
     file_extension_constraint: set[str] | None = None,
 ) -> None:
@@ -122,7 +123,6 @@ def produce_descriptions(
     Inputs:
         directories_with_files_to_describe: directories from which files are to be described.
         file_description_dir: directory where generated file descriptions are to be saved to.
-        work_dir: project directory worked on with Clean Coder.
         ignore: files and folders to ignore.
         file_extension_constraint: The list of file extension types accepted, if it's provided.
 
@@ -139,7 +139,6 @@ def produce_descriptions(
         ignore = {".clean_coder", ".coderrules"}
         produce_descriptions(directories_with_files_to_describe=[work_dir],
                         file_description_dir=file_description_dir,
-                        work_dir=work_dir,
                         file_extension_constraint=file_extension_constraint,
                         ignore=ignore,
                         )
@@ -161,7 +160,7 @@ def produce_descriptions(
     chain = prompt | llm | StrOutputParser()
     Path(file_description_dir).mkdir(parents=True, exist_ok=True)
     output_descriptions(
-        files_to_describe=files_to_describe, work_dir=work_dir, chain=chain, file_description_dir=file_description_dir
+        files_to_describe=files_to_describe, chain=chain, file_description_dir=file_description_dir
     )
 
 
@@ -182,7 +181,6 @@ def upload_to_collection(collection: chromadb.PersistentClient, file_description
 
 def upload_descriptions_to_vdb(
     chroma_collection_name: str,
-    work_dir: str,
     file_description_dir: str,
     vdb_location: str = ".clean_coder/chroma_base",
 ) -> None:
@@ -192,7 +190,6 @@ def upload_descriptions_to_vdb(
     Inputs:
         chroma_collection_name: name of the collection within Chroma vector database to save file descriptions in.
         file_description_dir: directory where generated file descriptions are available.
-        work_dir: project directory worked on with Clean Coder.
         vdb_location: (optional) location for storing the vector database.
 
     Example:
@@ -208,13 +205,16 @@ def upload_descriptions_to_vdb(
         ignore = {".clean_coder", ".coderrules"}
         produce_descriptions(directories_with_files_to_describe=[work_dir],
                         file_description_dir=file_description_dir,
-                        work_dir=work_dir,
                         file_extension_constraint=file_extension_constraint,
                         ignore=ignore,
                         )
         chroma_collection_name = f"clean_coder_{Path(work_dir).name}_file_descriptions"
-        upload_descriptions_to_vdb(chroma_collection_name=chroma_collection_name, work_dir=work_dir, file_description_dir=file_description_dir)
+        upload_descriptions_to_vdb(chroma_collection_name=chroma_collection_name, file_description_dir=file_description_dir)
     """
+    work_dir = os.getenv("WORK_DIR")
+    if not work_dir:
+        msg = "WORK_DIR variable not provided. Please add WORK_DIR to .env file"
+        raise MissingEnvironmentVariableError(msg)
     chroma_client = chromadb.PersistentClient(path=join_paths(work_dir, vdb_location))
     collection = chroma_client.get_or_create_collection(
         name=chroma_collection_name,
@@ -262,11 +262,10 @@ if __name__ == "__main__":
     produce_descriptions(
         directories_with_files_to_describe=[work_dir],
         file_description_dir=file_description_dir,
-        work_dir=work_dir,
         file_extension_constraint=file_extension_constraint,
         ignore=ignore,
     )
     chroma_collection_name = f"clean_coder_{Path(work_dir).name}_file_descriptions"
     upload_descriptions_to_vdb(
-        chroma_collection_name=chroma_collection_name, work_dir=work_dir, file_description_dir=file_description_dir
+        chroma_collection_name=chroma_collection_name, file_description_dir=file_description_dir,
     )
