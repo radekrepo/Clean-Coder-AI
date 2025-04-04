@@ -1,15 +1,17 @@
-import re
-import os
-import xml.etree.ElementTree as ET
 import base64
-import requests
-from src.utilities.start_work_functions import file_folder_ignored, Work
-from src.utilities.print_formatters import print_formatted
-from dotenv import load_dotenv, find_dotenv
-from todoist_api_python.api import TodoistAPI
-from langchain_core.messages import HumanMessage, ToolMessage
-import click
+import os
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
+import click
+import requests
+from dotenv import find_dotenv, load_dotenv
+from langchain_core.messages import HumanMessage, ToolMessage
+from todoist_api_python.api import TodoistAPI
+
+from src.utilities.print_formatters import print_formatted
+from src.utilities.start_work_functions import Work, file_folder_ignored
 
 load_dotenv(find_dotenv())
 work_dir = os.getenv("WORK_DIR")
@@ -207,13 +209,14 @@ def bad_tool_call_looped(state):
         return True
 
 
-def create_frontend_feedback_story():
-    frontend_feedback_story_path = os.path.join(Work.dir(), '.clean_coder', 'frontend_feedback_story.txt')
-    if not os.path.exists(frontend_feedback_story_path):
-        with open(frontend_feedback_story_path, 'w') as file:
+def create_frontend_feedback_story() -> None:
+    """Create a frontend feedback story file if it doesn't exist."""
+    frontend_feedback_story_path = Path(Work.dir(), ".clean_coder", "frontend_feedback_story.txt")
+    if not frontend_feedback_story_path.exists():
+        with open(frontend_feedback_story_path, "w") as file:
             file.write(storyfile_template)
         click.launch(frontend_feedback_story_path)
-        input("Fulfill file with informations needed for a frontend feedback agent to know. Save file and hit Enter.")
+        input("Update file with information needed for a frontend feedback agent to know. Save file and hit Enter.")
 
 
 def read_coderrules():
